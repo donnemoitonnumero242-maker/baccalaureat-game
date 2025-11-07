@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu du Baccalauréat</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #89f7fe, #66a6ff);
+            color: #222;
+            text-align: center;
+            padding: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            width: 80%;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        .player-list {
+            list-style: none;
+            padding: 0;
+        }
+        .player-list li {
+            background: #f1f1f1;
+            margin: 5px;
+            padding: 8px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="home-screen">
+        <h2>🎮 Jeu du Baccalauréat</h2>
+        <button onclick="createGame()">Créer une partie</button><br>
+        <button onclick="showJoin()">Rejoindre une partie</button>
+    </div>
+
+    <div class="card hidden" id="create-screen">
+        <h3>Créer une partie</h3>
+        <input type="text" id="admin-name" placeholder="Votre nom (Admin)">
+        <button onclick="startGame()">Créer</button>
+        <p id="game-code-display"></p>
+    </div>
+
+    <div class="card hidden" id="join-screen">
+        <h3>Rejoindre une partie</h3>
+        <input type="text" id="player-name" placeholder="Votre nom">
+        <input type="text" id="game-code" placeholder="Code de la partie">
+        <button onclick="joinGame()">Rejoindre</button>
+    </div>
+
+    <div class="card hidden" id="lobby-screen">
+        <h3>Code de la partie : <span id="lobby-code"></span></h3>
+        <h4>Joueurs connectés :</h4>
+        <ul class="player-list" id="player-list"></ul>
+        <button id="start-btn" class="hidden" onclick="launchGame()">🚀 Démarrer la partie</button>
+    </div>
+
+    <div class="card hidden" id="game-screen">
+        <h2>🎲 Lettre tirée : <span id="random-letter"></span></h2>
+        <div id="questionnaire"></div>
+        <button onclick="submitAnswers()">Soumettre mes réponses</button>
+    </div>
+
+    <div class="card hidden" id="results-screen">
+        <h3>📋 Résultats</h3>
+        <div id="results"></div>
+        <button onclick="resetGame()">Rejouer</button>
+    </div>
+
+    <script>
+        const categories = ["Prénom", "Pays", "Animal", "Fruit", "Objet"];
+        let gameData = {
+            code: "",
+            admin: "",
+            players: [],
+            letter: "",
+            started: false
+        };
+
+        // === Création de partie ===
+        function createGame() {
+            document.getElementById("home-screen").classList.add("hidden");
+            document.getElementById("create-screen").classList.remove("hidden");
+        }
+
+        function startGame() {
+            const adminName = document.getElementById("admin-name").value.trim();
+            if (!adminName) return alert("Entrez votre nom !");
+            const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+            gameData = { code, admin: adminName, players: [adminName], started: false };
+            localStorage.setItem(code, JSON.stringify(gameData));
+
+            document.getElementById("create-screen").classList.add("hidden");
+            document.getElementById("lobby-screen").classList.remove("hidden");
+            document.getElementById("lobby-code").textContent = code;
+            document.getElementById("player-list").innerHTML = `<li>${adminName} (Admin)</li>`;
+            document.getElementById("start-btn").classList.remove("hidden");
+        }
+
+        // === Rejoindre une partie ===
+        function showJoin() {
+            document.getElementById("home-screen").classList.add("hidden");
+            document.getElementById("join-screen").classList.remove("hidden");
+        }
+
+        function joinGame() {
+            const playerName = document.getElementById("player-name").value.trim();
+            const code = document.getElementById("game-code").value.trim().toUpperCase();
+            const stored = localStorage.getItem(code);
+            if (!stored) return alert("Partie introuvable !");
+            const data = JSON.parse(stored);
+
+            if (data.players.length >= 10) {
+                return alert("La partie est complète (max 10 joueurs).");
+            }
+
+            data.players.push(playerName);
+            localStorage.setItem(code, JSON.stringify(data));
+            alert("Vous avez rejoint la partie !");
+            location.reload();
+        }
+
+        // === Affichage du lobby ===
+        window.onload = function () {
+            for (let key in localStorage) {
+                try {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    if (data && data.players) {
+                        document.getElementById("home-screen").classList.add("hidden");
+                        document.getElementById("lobby-screen").classList.remove("hidden");
+                        document.getElementById("lobby-code").textContent = data.code;
+                        document.getElementById("player-list").innerHTML = data.players.map(p => `<li>${p}</li>`).join("");
+                        if (p === data.admin) document.getElementById("start-btn").classList.remove("hidden");
+                    }
+                } catch { }
+            }
+        };
+
+        // === Lancer la partie ===
+        function launchGame() {
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const lettre = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            gameData = JSON.parse(localStorage.getItem(gameData.code));
+            gameData.letter = lettre;
+            gameData.started = true;
+            localStorage.setItem(gameData.code, JSON.stringify(gameData));
+
+            document.getElementById("lobby-screen").classList.add("hidden");
+            document.getElementById("game-screen").classList.remove("hidden");
+            document.getElementById("random-letter").textContent = lettre;
+
+            // Génère les champs
+            const qDiv = document.getElementById("questionnaire");
+            qDiv.innerHTML = "";
+            categories.forEach(cat => {
+                qDiv.innerHTML += `<p>${cat} commençant par '${lettre}' : <input type="text" id="${cat}"></p>`;
+            });
+        }
+
+        // === Soumission des réponses ===
+        function submitAnswers() {
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "<h4>Vos réponses :</h4>";
+            let score = 0;
+            const lettre = gameData.letter;
+            categories.forEach(cat => {
+                const val = document.getElementById(cat).value.trim();
+                resultsDiv.innerHTML += `<p>${cat} : ${val}</p>`;
+                if (val && val[0].toUpperCase() === lettre) score += 10;
+            });
+            resultsDiv.innerHTML += `<h3>⭐ Score final : ${score} points</h3>`;
+
+            document.getElementById("game-screen").classList.add("hidden");
+            document.getElementById("results-screen").classList.remove("hidden");
+        }
+
+        function resetGame() {
+            localStorage.clear();
+            location.reload();
+        }
+    </script>
+
+</body>
+</html>
